@@ -1,0 +1,12 @@
+{
+  "name": "bitrix24-payment-section",
+  "version": "1.0.0",
+  "description": "Payment Section for Bitrix24 hosted via Dokploy",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

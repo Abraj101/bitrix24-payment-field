@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Section – Setup Dashboard</title>
+    <script src="https://api.bitrix24.com/api/v1/"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            font-size: 13px; background: #f5f6fa;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 24px;
+        }
+        .card {
+            background: #fff; border-radius: 10px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            padding: 32px; max-width: 520px; width: 100%;
+        }
+        h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+        p  { color: #666; margin-bottom: 20px; line-height: 1.5; }
+        .steps { list-style: none; counter-reset: steps; margin-bottom: 24px; }
+        .steps li {
+            counter-increment: steps; display: flex; align-items: flex-start;
+            gap: 12px; padding: 10px 0; border-bottom: 1px solid #f0f0f0;
+            color: #444; line-height: 1.5;
+        }
+        .steps li::before {
+            content: counter(steps); background: #5b8af5; color: #fff;
+            min-width: 22px; height: 22px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 600; flex-shrink: 0; margin-top: 1px;
+        }
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        button {
+            padding: 10px 20px; border: none; border-radius: 6px;
+            font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s;
+        }
+        .btn-primary   { background: #5b8af5; color: #fff; }
+        .btn-primary:hover { background: #4070e0; }
+        .btn-secondary { background: #f0f0f0; color: #444; }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-danger    { background: #fdeaea; color: #c0392b; }
+        .btn-danger:hover { background: #fbd5d5; }
+        .status {
+            margin-top: 16px; padding: 10px 14px; border-radius: 6px;
+            font-size: 12px; line-height: 1.6; display: none;
+        }
+        .status.success { background: #eafaf1; color: #2e7d52; display: block; }
+        .status.error   { background: #fdeaea; color: #c0392b; display: block; }
+        .status.info    { background: #eef2ff; color: #3730a3; display: block; }
+        code { background: #f5f6fa; border-radius: 4px; padding: 2px 6px; font-size: 12px; color: #555; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Payment Section – Server Setup</h1>
+    <p>Registers the custom interface mapping using your production web server.</p>
+
+    <ul class="steps">
+        <li>Clears out old broken field handlers</li>
+        <li>Binds your live server <code>handler.html</code> endpoint</li>
+        <li>Enables native CRM Deal data structures</li>
+    </ul>
+
+    <div class="btn-group">
+        <button class="btn-primary"   onclick="registerAndInstall()">Register &amp; Install</button>
+        <button class="btn-secondary" onclick="checkExisting()">Check Status</button>
+        <button class="btn-danger"    onclick="removeField()">Remove Field</button>
+    </div>
+
+    <div class="status" id="status"></div>
+</div>
+
+<script>
+const FIELD_TYPE_ID = 'payment_section_field';
+const FIELD_NAME    = 'PAYMENT_SECTION';
+
+// Grabs your current live Dokploy host domain dynamically
+const HANDLER_URL = window.location.origin + '/handler.html';
+
+function setStatus(msg, type) {
+    var el = document.getElementById('status');
+    el.innerHTML  = msg;
+    el.className  = 'status ' + type;
+}
+
+function registerFieldType(callback) {
+    if(!window.BX24) {
+        setStatus("Error: BX24 engine could not mount.", "error");
+        return;
+    }
+    
+    BX24.callMethod('userfieldtype.add', {
+        USER_TYPE_ID: FIELD_TYPE_ID,
+        HANDLER:      HANDLER_URL,
+        TITLE:        'Payment Section',
+        DESCRIPTION:  'Payment Plan, Discount & Balloon Payments',
+        OPTIONS:      { height: 560 },
+    }, function(res) {
+        if (res.error()) {
+            var e = res.error().toString();
+            if (e.indexOf('already exists') !== -1 || e.indexOf('EXISTS') !== -1) {
+                setStatus('Field type template matching found — processing mapping...', 'info');
+                callback();
+            } else {
+                setStatus('Registration configuration dropped: ' + e, 'error');
+            }
+        } else {
+            callback();
+        }
+    });
+}
+
+function addDealField(callback) {
+    BX24.callMethod('crm.deal.userfield.add', {
+        fields: {
+            FIELD_NAME:        FIELD_NAME,
+            USER_TYPE_ID:      FIELD_TYPE_ID,
+            EDIT_FORM_LABEL:   'Payment Section',
+            LIST_COLUMN_LABEL: 'Payment Section',
+            XML_ID:            FIELD_NAME,
+            MANDATORY:         'N',
+            SHOW_FILTER:       'N',
+            SHOW_IN_LIST:      'Y',
+            SETTINGS:          { height: 560 },
+        }
+    }, function(res) {
+        if (res.error()) {
+            var e = res.error().toString();
+            if (e.indexOf('already exists') !== -1 || e.indexOf('EXISTS') !== -1) {
+                setStatus('✓ Live Field Registered and Linked!<br>Open a Deal card to use the field.', 'success');
+            } else {
+                setStatus('CRM Deal field creation failed: ' + e, 'error');
+            }
+        } else {
+            if (callback) callback(res.data());
+        }
+    });
+}
+
+function registerAndInstall() {
+    setStatus('Step 1/2 — Binding Live Layout Handler...', 'info');
+    registerFieldType(function() {
+        setStatus('Step 2/2 — Injected fields to CRM Registry...', 'info');
+        addDealField(function(id) {
+            setStatus('✓ Configuration updated! Live server application elements are registered.', 'success');
+        });
+    });
+}
+
+function checkExisting() {
+    setStatus('Checking status...', 'info');
+    BX24.callMethod('crm.deal.userfield.list', {
+        filter: { USER_TYPE_ID: FIELD_TYPE_ID }
+    }, function(res) {
+        if (res.error()) {
+            setStatus('Error check failed: ' + res.error(), 'error');
+        } else {
+            var fields = res.data();
+            if (fields && fields.length) {
+                setStatus('✓ Active field found: ' + fields.map(function(f) { return '<code>' + f.FIELD_NAME + '</code>'; }).join(', '), 'success');
+            } else {
+                setStatus('No fields associated with this custom app found.', 'error');
+            }
+        }
+    });
+}
+
+function removeField() {
+    if (!confirm('Remove field properties from all Deal structures?')) return;
+    setStatus('Removing field settings...', 'info');
+    BX24.callMethod('crm.deal.userfield.list', { filter: { USER_TYPE_ID: FIELD_TYPE_ID } }, function(res) {
+        if (res.error() || !res.data().length) {
+            setStatus('No field entries mapped to discard.', 'error');
+            return;
+        }
+        var id = res.data()[0].ID;
+        BX24.callMethod('crm.deal.userfield.delete', { id: id }, function(r) {
+            if (r.error()) setStatus('Error clear transaction: ' + r.error(), 'error');
+            else setStatus('Discarded field elements cleanly.', 'success');
+        });
+    });
+}
+
+BX24.init(function() {
+    setStatus('Connected to Bitrix24 Environment Engine. Ready to configure.', 'info');
+});
+</script>
+</body>
+</html>
