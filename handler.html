@@ -202,12 +202,13 @@ function collectData() {
     };
 }
 
-/* ── FORCE NATIVE SAVE BAR FUNCTION ── */
+// Push live updates straight to Bitrix24 parent frame tracking
 function handleDataChange() {
     if (window.BX24) {
         const jsonString = JSON.stringify(collectData());
-        // This alerts Bitrix24 that the data has changed, instantly popping up the native save bar!
-        BX24.placement.call('setValue', jsonString);
+        BX24.placement.call('setValue', jsonString, function() {
+            console.log("Value transmitted to Bitrix core layout container.");
+        });
     }
 }
 
@@ -243,28 +244,29 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('JSON parsing error:', rawValue); }
+    } catch(e) { console.warn('JSON string tracking check skipped:', rawValue); }
 }
 
 function notifyResize() {
     if (window.BX24) BX24.fitWindow();
 }
 
+/* ── Live Server Handshake Pipeline ── */
 BX24.init(function() {
-    // Read the current field value out of Bitrix24's active context placement options
     var options = BX24.getPlacementOptions();
     
     if (options && options.VALUE) {
         populateFromValue(options.VALUE);
     }
 
-    /* ── DOKPLOY SYNCHRONOUS HANDSHAKE EVENT ── */
+    // MANDATORY HANDSHAKE: Force-prime Bitrix24's layout cache immediately upon load
+    const initialPayload = JSON.stringify(collectData());
+    BX24.placement.call('setValue', initialPayload);
+
+    // Synchronous Event Binder Interceptor
     BX24.placement.bindEvent('save', function(event) {
         const finalPayload = JSON.stringify(collectData());
-        
-        // Push the absolute freshest inputs up to Bitrix24 right as save is clicked
         BX24.placement.call('setValue', finalPayload, function() {
-            // Tells the parent view that saving is done and it can safely reload now
             if (event && typeof event.fulfill === 'function') {
                 event.fulfill();
             }
@@ -274,8 +276,8 @@ BX24.init(function() {
     notifyResize();
 });
 
-// Watch key presses and mutations to seamlessly trigger Bitrix24's native save panel
-document.addEventListener('keyup', handleDataChange);
+// Capture every input action to force Bitrix24's native Save panel into view
+document.addEventListener('input', handleDataChange);
 document.addEventListener('change', handleDataChange);
 </script>
 </body>
