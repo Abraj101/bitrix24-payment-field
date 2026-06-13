@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Section – Setup</title>
+    <script src="//api.bitrix24.com/api/v1/"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            font-size: 13px; background: #f5f6fa;
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; padding: 24px;
+        }
+        .card {
+            background: #fff; border-radius: 10px;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            padding: 32px; max-width: 560px; width: 100%;
+        }
+        h1 { font-size: 18px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px; }
+        p  { color: #666; margin-bottom: 20px; line-height: 1.5; }
+
+        .section-label {
+            font-size: 11px; font-weight: 600; color: #aaa;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            margin: 20px 0 8px;
+        }
+
+        .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+        button {
+            padding: 10px 20px; border: none; border-radius: 6px;
+            font-size: 13px; font-weight: 500; cursor: pointer; transition: background 0.15s;
+        }
+        .btn-primary   { background: #5b8af5; color: #fff; }
+        .btn-primary:hover { background: #4070e0; }
+        .btn-secondary { background: #f0f0f0; color: #444; }
+        .btn-secondary:hover { background: #e0e0e0; }
+        .btn-danger    { background: #fdeaea; color: #c0392b; }
+        .btn-danger:hover { background: #fbd5d5; }
+        .btn-green     { background: #eafaf1; color: #2e7d52; }
+        .btn-green:hover { background: #d4f5e2; }
+
+        .status {
+            margin-top: 12px; padding: 10px 14px; border-radius: 6px;
+            font-size: 12px; line-height: 1.6; display: none;
+        }
+        .status.success { background: #eafaf1; color: #2e7d52; display: block; }
+        .status.error   { background: #fdeaea; color: #c0392b; display: block; }
+        .status.info    { background: #eef2ff; color: #3730a3; display: block; }
+        code { background: #f5f6fa; border-radius: 4px; padding: 2px 6px; font-size: 12px; color: #555; }
+        hr { border: none; border-top: 1px solid #f0f0f0; margin: 20px 0; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>Payment Section – Setup</h1>
+    <p>Run these steps <strong>in order</strong> once to set up the Payment Section on CRM Deals.</p>
+
+    <!-- STEP 1 -->
+    <div class="section-label">Step 1 — Create hidden storage field</div>
+    <p style="margin-bottom:10px">Creates <code>UF_CRM_PAYMENT_JSON</code> — a hidden text field that stores your payment data as JSON.</p>
+    <div class="btn-group">
+        <button class="btn-green" onclick="createStorageField()">Create Storage Field</button>
+        <button class="btn-secondary" onclick="checkStorageField()">Check if exists</button>
+    </div>
+    <div class="status" id="status1"></div>
+
+    <hr>
+
+    <!-- STEP 2 -->
+    <div class="section-label">Step 2 — Register custom field type & add to Deals</div>
+    <p style="margin-bottom:10px">Registers the Payment Section widget and adds it to all Deal cards.</p>
+    <div class="btn-group">
+        <button class="btn-primary" onclick="registerAndInstall()">Register &amp; Install</button>
+        <button class="btn-secondary" onclick="checkExisting()">Check Status</button>
+        <button class="btn-danger" onclick="removeField()">Remove Field</button>
+    </div>
+    <div class="status" id="status2"></div>
+</div>
+
+<script>
+var FIELD_TYPE_ID  = 'payment_section_field';
+var FIELD_NAME     = 'PAYMENT_SECTION';
+var STORAGE_FIELD  = 'PAYMENT_JSON';       // becomes UF_CRM_PAYMENT_JSON
+var HANDLER_URL    = window.location.origin + '/handler.html';
+
+function setStatus(n, msg, type) {
+    var el = document.getElementById('status' + n);
+    el.innerHTML  = msg;
+    el.className  = 'status ' + type;
+}
+
+/* ══ STEP 1: hidden storage field ══ */
+function createStorageField() {
+    setStatus(1, 'Creating storage field…', 'info');
+    BX24.callMethod('crm.deal.userfield.add', {
+        fields: {
+            FIELD_NAME:        STORAGE_FIELD,
+            USER_TYPE_ID:      'string',
+            EDIT_FORM_LABEL:   'Payment JSON Storage',
+            LIST_COLUMN_LABEL: 'Payment JSON',
+            SHOW_IN_LIST:      'N',
+            SHOW_FILTER:       'N',
+            EDIT_IN_LIST:      'N',
+            MANDATORY:         'N',
+            SETTINGS: { SIZE: 0, ROWS: 1, REGEXP: '', MIN_LENGTH: 0, MAX_LENGTH: 0, DEFAULT_VALUE: '' }
+        }
+    }, function(r) {
+        if (r.error()) {
+            var e = r.error().toString();
+            if (e.indexOf('already') !== -1 || e.indexOf('EXISTS') !== -1) {
+                setStatus(1, '✓ Storage field <code>UF_CRM_PAYMENT_JSON</code> already exists — good to go!', 'success');
+            } else {
+                setStatus(1, 'Error: ' + e, 'error');
+            }
+        } else {
+            setStatus(1, '✓ Created <code>UF_CRM_PAYMENT_JSON</code> (ID: ' + r.data() + '). Proceed to Step 2.', 'success');
+        }
+    });
+}
+
+function checkStorageField() {
+    setStatus(1, 'Checking…', 'info');
+    BX24.callMethod('crm.deal.userfield.list', {
+        filter: { FIELD_NAME: 'UF_CRM_' + STORAGE_FIELD }
+    }, function(r) {
+        if (r.error()) { setStatus(1, 'Error: ' + r.error(), 'error'); return; }
+        var fields = r.data();
+        if (fields && fields.length) {
+            setStatus(1, '✓ Found: <code>' + fields[0].FIELD_NAME + '</code> (ID: ' + fields[0].ID + ')', 'success');
+        } else {
+            setStatus(1, 'Not found — click "Create Storage Field" first.', 'error');
+        }
+    });
+}
+
+/* ══ STEP 2: custom field type + deal field ══ */
+function registerFieldType(callback) {
+    BX24.callMethod('userfieldtype.add', {
+        USER_TYPE_ID: FIELD_TYPE_ID,
+        HANDLER:      HANDLER_URL,
+        TITLE:        'Payment Section',
+        DESCRIPTION:  'Payment Plan, Discount & Balloon Payments',
+        OPTIONS:      { height: 560 },
+    }, function(res) {
+        if (res.error()) {
+            var e = res.error().toString();
+            if (e.indexOf('already') !== -1 || e.indexOf('EXISTS') !== -1 || e.indexOf('Handler already') !== -1) {
+                setStatus(2, 'Field type already registered — continuing…', 'info');
+                callback();
+            } else {
+                setStatus(2, 'Error registering type: ' + e, 'error');
+            }
+        } else {
+            callback();
+        }
+    });
+}
+
+function addDealField(callback) {
+    BX24.callMethod('crm.deal.userfield.add', {
+        fields: {
+            FIELD_NAME:        FIELD_NAME,
+            USER_TYPE_ID:      FIELD_TYPE_ID,
+            EDIT_FORM_LABEL:   'Payment Section',
+            LIST_COLUMN_LABEL: 'Payment Section',
+            XML_ID:            FIELD_NAME,
+            MANDATORY:         'N',
+            SHOW_FILTER:       'N',
+            SHOW_IN_LIST:      'Y',
+            SETTINGS:          { height: 560 },
+        }
+    }, function(res) {
+        if (res.error()) {
+            var e = res.error().toString();
+            if (e.indexOf('already') !== -1 || e.indexOf('EXISTS') !== -1) {
+                setStatus(2, '✓ All done! Widget already on Deals. Open any Deal to use it.', 'success');
+            } else {
+                setStatus(2, 'Error adding deal field: ' + e, 'error');
+            }
+        } else {
+            if (callback) callback(res.data());
+        }
+    });
+}
+
+function registerAndInstall() {
+    setStatus(2, 'Step 1/2 — Registering field type…', 'info');
+    registerFieldType(function() {
+        setStatus(2, 'Step 2/2 — Adding widget to Deals…', 'info');
+        addDealField(function(id) {
+            setStatus(2, '✓ Done! Payment Section added to CRM Deals (ID: ' + id + ').<br>Open any Deal — you should see the Payment Section widget.', 'success');
+        });
+    });
+}
+
+function checkExisting() {
+    setStatus(2, 'Checking…', 'info');
+    BX24.callMethod('crm.deal.userfield.list', { filter: { USER_TYPE_ID: FIELD_TYPE_ID } }, function(res) {
+        if (res.error()) { setStatus(2, 'Error: ' + res.error(), 'error'); return; }
+        var fields = res.data();
+        if (fields && fields.length) {
+            setStatus(2, '✓ Found: ' + fields.map(function(f) { return '<code>' + f.FIELD_NAME + '</code>'; }).join(', '), 'success');
+        } else {
+            setStatus(2, 'No widget field found on Deals. Click "Register & Install".', 'error');
+        }
+    });
+}
+
+function removeField() {
+    if (!confirm('Remove Payment Section widget from all Deals?')) return;
+    setStatus(2, 'Removing…', 'info');
+    BX24.callMethod('crm.deal.userfield.list', { filter: { USER_TYPE_ID: FIELD_TYPE_ID } }, function(res) {
+        if (res.error() || !res.data().length) { setStatus(2, 'Nothing to remove.', 'error'); return; }
+        BX24.callMethod('crm.deal.userfield.delete', { id: res.data()[0].ID }, function(r) {
+            if (r.error()) setStatus(2, 'Error: ' + r.error(), 'error');
+            else setStatus(2, 'Removed successfully.', 'success');
+        });
+    });
+}
+
+BX24.init(function() {
+    console.log('Setup page ready. Handler URL:', HANDLER_URL);
+});
+</script>
+</body>
+</html>
