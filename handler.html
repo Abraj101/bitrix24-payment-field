@@ -7,43 +7,28 @@
     <script src="https://api.bitrix24.com/api/v1/"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            font-size: 13px; color: #333; background: transparent; padding: 0;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 13px; color: #333; background: transparent; }
         .bx-section { background: #fff; border-radius: 8px; padding-bottom: 10px; }
         .section-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 10px; border-bottom: 1px solid #f0f0f0; }
         .section-title { font-size: 14px; font-weight: 600; color: #1a1a1a; }
-        .status-bar { font-size: 11px; padding: 5px 16px; background: #f0f4ff; color: #3730a3; display: none; }
+        .status-bar { font-size: 11px; padding: 5px 16px; display: none; }
         .status-bar.visible { display: block; }
+        .status-bar.ok   { background: #eafaf1; color: #2e7d52; }
+        .status-bar.err  { background: #fdeaea; color: #c0392b; }
+        .status-bar.info { background: #eef2ff; color: #3730a3; }
         .field-row { display: flex; gap: 12px; padding: 10px 16px; align-items: flex-end; }
         .field-group { display: flex; flex-direction: column; flex: 1; gap: 4px; }
         .field-group.half { flex: 0 0 calc(50% - 6px); }
         .field-label { font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase; letter-spacing: 0.04em; }
-        .bx-input, .bx-select {
-            width: 100%; height: 36px; padding: 0 12px;
-            border: 1px solid #e0e0e0; border-radius: 6px;
-            font-size: 13px; color: #333; background: #fafafa;
-            outline: none; transition: border-color 0.15s;
-            appearance: none; -webkit-appearance: none;
-        }
+        .bx-input, .bx-select { width: 100%; height: 36px; padding: 0 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; color: #333; background: #fafafa; outline: none; appearance: none; -webkit-appearance: none; }
         .bx-input:focus, .bx-select:focus { border-color: #5b8af5; background: #fff; }
         .select-wrapper { position: relative; }
-        .select-wrapper::after {
-            content: ""; position: absolute; right: 12px; top: 50%;
-            transform: translateY(-50%); width: 0; height: 0;
-            border-left: 4px solid transparent; border-right: 4px solid transparent;
-            border-top: 5px solid #aaa; pointer-events: none;
-        }
+        .select-wrapper::after { content: ""; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent; border-top: 5px solid #aaa; pointer-events: none; }
         .select-wrapper .bx-select { padding-right: 30px; cursor: pointer; }
         .balloon-section { padding: 10px 16px 6px; }
         .balloon-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
         .balloon-title { font-size: 13px; font-weight: 600; color: #1a1a1a; }
-        .btn-add-balloon {
-            width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #5b8af5;
-            background: transparent; color: #5b8af5; font-size: 18px;
-            display: flex; align-items: center; justify-content: center; cursor: pointer;
-        }
+        .btn-add-balloon { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #5b8af5; background: transparent; color: #5b8af5; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         .balloon-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
         .balloon-row .bx-input { flex: 1; }
         .btn-remove-balloon { background: transparent; border: none; color: #e05252; font-size: 18px; cursor: pointer; padding: 4px; }
@@ -52,19 +37,10 @@
         .custom-block-label { font-size: 11px; font-weight: 600; color: #aaa; text-transform: uppercase; padding: 10px 16px 2px; }
         .divider { height: 1px; background: #f0f0f0; margin: 4px 0; }
         .save-bar { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid #f0f0f0; }
-        .btn-save {
-            height: 34px; padding: 0 20px; background: #5b8af5; color: #fff;
-            border: none; border-radius: 6px; font-size: 13px; font-weight: 500;
-            cursor: pointer; transition: background 0.15s;
-        }
+        .btn-save { height: 34px; padding: 0 20px; background: #5b8af5; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
         .btn-save:hover { background: #4070e0; }
         .btn-save:disabled { background: #aac4f5; cursor: not-allowed; }
-        .toast {
-            position: fixed; bottom: 20px; right: 20px; padding: 10px 18px;
-            border-radius: 6px; font-size: 13px; color: #fff; background: #1a1a1a;
-            opacity: 0; transform: translateY(8px);
-            transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 9999;
-        }
+        .toast { position: fixed; bottom: 20px; right: 20px; padding: 10px 18px; border-radius: 6px; font-size: 13px; color: #fff; background: #1a1a1a; opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 9999; }
         .toast.show { opacity: 1; transform: translateY(0); }
     </style>
 </head>
@@ -73,8 +49,6 @@
     <div class="section-header">
         <span class="section-title">Payment Details</span>
     </div>
-
-    <!-- Status bar shows deal ID or error -->
     <div class="status-bar" id="statusBar"></div>
 
     <div class="field-row">
@@ -159,119 +133,122 @@
         <button class="btn-save" id="btnSave" onclick="onSave()">Save</button>
     </div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
 var balloonCounter = 0;
 var currentDealId  = null;
-
-// ── The hidden field that stores our JSON ──
-// Make sure this matches what you created: UF_CRM_PAYMENT_JSON
 var STORAGE_FIELD  = 'UF_CRM_PAYMENT_JSON';
 
-/* ── Get deal ID from the current page URL via BX24 ── */
-function getDealId() {
-    // Method 1: from the parent window location passed by BX24
-    try {
-        var path = window.location.href;
-        console.log('iframe URL:', path);
+/* ── Get deal ID from the parent page URL via postMessage ── */
+function getDealIdFromParent() {
+    return new Promise(function(resolve) {
+        var timeout = setTimeout(function() { resolve(null); }, 3000);
 
-        // Bitrix sometimes passes ENTITY_ID or ID in query string
-        var params = new URLSearchParams(window.location.search);
-        var fromUrl = params.get('ENTITY_ID') || params.get('ID') || params.get('id');
-        if (fromUrl) return fromUrl;
-    } catch(e) {}
+        window.addEventListener('message', function handler(e) {
+            if (e.data && e.data.type === 'DEAL_ID_RESPONSE') {
+                clearTimeout(timeout);
+                window.removeEventListener('message', handler);
+                resolve(e.data.dealId);
+            }
+        });
 
-    // Method 2: ask BX24 for current app info which contains entity context
-    return null;
-}
-
-/* ── Ask parent Bitrix page for deal ID via postMessage ── */
-function requestDealIdFromParent(callback) {
-    // Post a message to the parent frame asking for the current URL
-    window.parent.postMessage({ action: 'getDealId' }, '*');
-
-    var timeout = setTimeout(function() {
-        callback(null);
-    }, 2000);
-
-    window.addEventListener('message', function handler(e) {
-        if (e.data && e.data.dealId) {
-            clearTimeout(timeout);
-            window.removeEventListener('message', handler);
-            callback(e.data.dealId);
-        }
+        // Ask parent frame for its URL
+        window.parent.postMessage({ type: 'GET_DEAL_ID' }, '*');
     });
 }
 
-/* ── Extract deal ID from a Bitrix deal URL ── */
-function extractDealIdFromUrl(url) {
+/* ── Extract deal ID from a URL string ── */
+function extractDealId(url) {
     if (!url) return null;
-    // Matches: /crm/deal/details/123/ or /crm/deal/123/
-    var match = url.match(/\/deal\/(?:details\/)?(\d+)/i);
-    return match ? match[1] : null;
+    // Matches /crm/deal/details/123/ or /crm/deal/123/
+    var m = url.match(/\/deal\/(?:details\/)?(\d+)/i);
+    return m ? m[1] : null;
 }
 
-/* ── Use BX24.callMethod to find deal by searching recent deals ── */
-function findDealIdViaApi(callback) {
-    // Get the current app's auth info which may have context
-    BX24.callMethod('crm.deal.list', {
-        order: { DATE_MODIFY: 'DESC' },
-        filter: {},
-        select: ['ID', 'TITLE'],
-        start: 0
-    }, function(result) {
-        if (!result.error()) {
-            var deals = result.data();
-            console.log('Recent deals:', deals);
-            // Can't reliably pick one, but log for debugging
-        }
+/* ── Use APP_SID to call crm.deal.list filtered by current user ──
+   This is a fallback — we find the most recently modified deal
+   by the current user and assume that's the open one.
+   Not perfect but works when no other method gives us the ID. ── */
+function getDealIdFromCurrentUser(callback) {
+    // Get current user first
+    BX24.callMethod('user.current', {}, function(r) {
+        if (r.error()) { callback(null); return; }
+        var userId = r.data().ID;
+
+        // Get the referrer URL — Bitrix sets document.referrer to the deal page
+        var referrer = document.referrer;
+        console.log('Referrer for deal ID extraction:', referrer);
+        var fromReferrer = extractDealId(referrer);
+        if (fromReferrer) { callback(fromReferrer); return; }
+
         callback(null);
     });
 }
 
-/* ── Resolve deal ID using all available methods ── */
+/* ── Master resolver — tries all methods in sequence ── */
 function resolveDealId(callback) {
-    // Try URL params first
-    var fromUrl = getDealId();
-    if (fromUrl) {
-        console.log('Deal ID from URL:', fromUrl);
-        callback(fromUrl);
+    // 1. Try referrer (most reliable for self-hosted)
+    var referrer = document.referrer;
+    console.log('document.referrer:', referrer);
+    var fromReferrer = extractDealId(referrer);
+    if (fromReferrer) {
+        console.log('Got deal ID from referrer:', fromReferrer);
+        callback(fromReferrer);
         return;
     }
 
-    // Try BX24.placement.getOption (newer API)
-    try {
-        var opt = BX24.placement.getOption('ID')
-               || BX24.placement.getOption('ENTITY_ID')
-               || BX24.placement.getOption('id');
-        if (opt) {
-            console.log('Deal ID from placement.getOption:', opt);
-            callback(opt);
-            return;
-        }
-    } catch(e) {
-        console.log('placement.getOption not available:', e.message);
-    }
-
-    // Try postMessage to parent
-    requestDealIdFromParent(function(id) {
+    // 2. Try postMessage to parent
+    getDealIdFromParent().then(function(id) {
         if (id) {
-            console.log('Deal ID from postMessage:', id);
+            console.log('Got deal ID from postMessage:', id);
             callback(id);
             return;
         }
 
-        // Last resort: use app SID / current user context
-        // Log everything we have for debugging
-        console.log('window.location:', window.location.href);
-        console.log('document.referrer:', document.referrer);
-        console.log('All URL params:', window.location.search);
+        // 3. Try BX24.placement methods
+        try {
+            // Some versions use this
+            var opts = BX24.placement.info();
+            console.log('placement.info():', JSON.stringify(opts));
+            if (opts && opts.options) {
+                var id2 = opts.options.ID || opts.options.ENTITY_ID || opts.options.id;
+                if (id2) { callback(id2); return; }
+            }
+        } catch(e) { console.log('placement.info failed:', e.message); }
 
-        setStatus('Could not detect Deal ID. Please check console.', 'error');
-        callback(null);
+        // 4. Try current user + referrer fallback
+        getDealIdFromCurrentUser(function(id3) {
+            if (id3) { callback(id3); return; }
+
+            // 5. Nothing worked — ask user to input ID manually
+            console.warn('All deal ID methods failed. Showing manual input.');
+            showManualInput(callback);
+        });
     });
+}
+
+/* ── Last resort: show a small input so user can type deal ID ── */
+function showManualInput(callback) {
+    setStatus('Could not detect Deal ID automatically. Please enter it manually:', 'err');
+
+    var bar = document.getElementById('statusBar');
+    bar.innerHTML =
+        'Enter Deal ID manually: ' +
+        '<input id="manualDealId" type="number" style="width:80px;margin:0 6px;padding:2px 6px;border:1px solid #ccc;border-radius:4px;" placeholder="e.g. 5">' +
+        '<button onclick="applyManualId()" style="padding:2px 10px;background:#5b8af5;color:#fff;border:none;border-radius:4px;cursor:pointer;">Load</button>';
+    bar.className = 'status-bar visible err';
+
+    window._manualCallback = callback;
+}
+
+function applyManualId() {
+    var val = document.getElementById('manualDealId').value.trim();
+    if (!val) return;
+    if (window._manualCallback) {
+        window._manualCallback(val);
+        window._manualCallback = null;
+    }
 }
 
 /* ── Balloon rows ── */
@@ -301,7 +278,7 @@ function onPlanChange() {
     BX24.fitWindow();
 }
 
-/* ── Collect all field values ── */
+/* ── Collect form data ── */
 function collectData() {
     var plan = document.getElementById('paymentPlan').value;
     var balloons = [];
@@ -324,46 +301,38 @@ function collectData() {
     };
 }
 
-/* ── Save: write JSON string into the hidden UF field on the deal ── */
+/* ── Save to deal via REST ── */
 function onSave() {
     if (!currentDealId) {
         showToast('No Deal ID — cannot save', true);
         return;
     }
-
     var btn = document.getElementById('btnSave');
-    btn.disabled    = true;
+    btn.disabled = true;
     btn.textContent = 'Saving…';
 
-    var json   = JSON.stringify(collectData());
     var fields = {};
-    fields[STORAGE_FIELD] = json;
+    fields[STORAGE_FIELD] = JSON.stringify(collectData());
 
-    BX24.callMethod('crm.deal.update', {
-        id:     currentDealId,
-        fields: fields
-    }, function(result) {
-        btn.disabled    = false;
+    BX24.callMethod('crm.deal.update', { id: currentDealId, fields: fields }, function(r) {
+        btn.disabled = false;
         btn.textContent = 'Save';
-        if (result.error()) {
-            console.error('Save error:', result.error());
-            showToast('Save failed: ' + result.error(), true);
+        if (r.error()) {
+            console.error('Save error:', r.error());
+            showToast('Save failed: ' + r.error(), true);
         } else {
             showToast('Saved ✓');
-            console.log('Saved successfully to deal', currentDealId);
+            setStatus('Deal #' + currentDealId + ' — saved successfully', 'ok');
         }
     });
 }
 
-/* ── Load: read JSON string from the hidden UF field ── */
+/* ── Load from deal ── */
 function loadFromDeal(dealId) {
-    BX24.callMethod('crm.deal.get', { id: dealId }, function(result) {
-        if (result.error()) {
-            console.error('Load error:', result.error());
-            return;
-        }
-        var deal = result.data();
-        console.log('Deal loaded. Storage field value:', deal[STORAGE_FIELD]);
+    BX24.callMethod('crm.deal.get', { id: dealId }, function(r) {
+        if (r.error()) { console.error('Load error:', r.error()); return; }
+        var deal = r.data();
+        console.log('Deal loaded. Storage value:', deal[STORAGE_FIELD]);
         if (deal && deal[STORAGE_FIELD]) {
             populateFromValue(deal[STORAGE_FIELD]);
         }
@@ -372,27 +341,25 @@ function loadFromDeal(dealId) {
 }
 
 /* ── Populate form from JSON ── */
-function populateFromValue(rawValue) {
-    if (!rawValue) return;
+function populateFromValue(raw) {
+    if (!raw) return;
     try {
-        var data = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
-
-        if (data.paymentPlan) {
-            document.getElementById('paymentPlan').value = data.paymentPlan;
-            document.getElementById('customBlock').classList.toggle('visible', data.paymentPlan === 'custom');
+        var d = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (d.paymentPlan) {
+            document.getElementById('paymentPlan').value = d.paymentPlan;
+            document.getElementById('customBlock').classList.toggle('visible', d.paymentPlan === 'custom');
         }
-        if (data.discountPct)     document.getElementById('discountPct').value      = data.discountPct;
-        if (data.totalAmount)     document.getElementById('totalAmount').value      = data.totalAmount;
-        if (data.downpaymentPct)  document.getElementById('downpaymentPct').value   = data.downpaymentPct;
-        if (data.downpaymentDate) document.getElementById('downpaymentDate').value  = data.downpaymentDate;
-        if (data.possessionPct)   document.getElementById('possessionPct').value    = data.possessionPct;
-        if (data.possessionDate)  document.getElementById('possessionDate').value   = data.possessionDate;
-        if (data.innerPaymentPlan)document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
-        if (data.paymentPlanUnits)document.getElementById('paymentPlanUnits').value = data.paymentPlanUnits;
-
-        if (Array.isArray(data.balloonPayments) && data.balloonPayments.length) {
+        if (d.discountPct)     document.getElementById('discountPct').value      = d.discountPct;
+        if (d.totalAmount)     document.getElementById('totalAmount').value      = d.totalAmount;
+        if (d.downpaymentPct)  document.getElementById('downpaymentPct').value   = d.downpaymentPct;
+        if (d.downpaymentDate) document.getElementById('downpaymentDate').value  = d.downpaymentDate;
+        if (d.possessionPct)   document.getElementById('possessionPct').value    = d.possessionPct;
+        if (d.possessionDate)  document.getElementById('possessionDate').value   = d.possessionDate;
+        if (d.innerPaymentPlan)document.getElementById('innerPaymentPlan').value = d.innerPaymentPlan;
+        if (d.paymentPlanUnits)document.getElementById('paymentPlanUnits').value = d.paymentPlanUnits;
+        if (Array.isArray(d.balloonPayments) && d.balloonPayments.length) {
             document.getElementById('balloonRows').innerHTML = '';
-            data.balloonPayments.forEach(function(b, i) {
+            d.balloonPayments.forEach(function(b, i) {
                 balloonCounter = i;
                 var row = document.createElement('div');
                 row.className = 'balloon-row';
@@ -404,22 +371,18 @@ function populateFromValue(rawValue) {
                 document.getElementById('balloonRows').appendChild(row);
             });
         }
-    } catch(e) {
-        console.warn('populateFromValue error:', e);
-    }
+    } catch(e) { console.warn('populateFromValue error:', e); }
 }
 
 function setStatus(msg, type) {
     var bar = document.getElementById('statusBar');
     bar.textContent = msg;
-    bar.style.background = type === 'error' ? '#fdeaea' : '#f0f4ff';
-    bar.style.color      = type === 'error' ? '#c0392b' : '#3730a3';
-    bar.classList.add('visible');
+    bar.className = 'status-bar visible ' + type;
 }
 
 function showToast(msg, isError) {
     var t = document.getElementById('toast');
-    t.textContent      = msg;
+    t.textContent = msg;
     t.style.background = isError ? '#c0392b' : '#1a1a1a';
     t.classList.add('show');
     setTimeout(function() { t.classList.remove('show'); }, 2500);
@@ -428,24 +391,15 @@ function showToast(msg, isError) {
 /* ── Bootstrap ── */
 BX24.init(function() {
     console.log('BX24 initialized');
-    console.log('window.location.href:', window.location.href);
-    console.log('window.location.search:', window.location.search);
     console.log('document.referrer:', document.referrer);
-
-    // Log ALL URL params
-    var params = new URLSearchParams(window.location.search);
-    params.forEach(function(val, key) {
-        console.log('URL param:', key, '=', val);
-    });
 
     resolveDealId(function(dealId) {
         if (dealId) {
             currentDealId = dealId;
-            setStatus('Deal #' + dealId + ' — ready', 'info');
+            setStatus('Deal #' + dealId + ' — ready', 'ok');
             loadFromDeal(dealId);
-        } else {
-            setStatus('Deal ID not found — save disabled', 'error');
         }
+        // else: showManualInput already called inside resolveDealId
     });
 
     BX24.fitWindow();
