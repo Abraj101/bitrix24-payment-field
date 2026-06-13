@@ -202,9 +202,11 @@ function collectData() {
     };
 }
 
+/* ── FORCE NATIVE SAVE BAR FUNCTION ── */
 function handleDataChange() {
     if (window.BX24) {
         const jsonString = JSON.stringify(collectData());
+        // This alerts Bitrix24 that the data has changed, instantly popping up the native save bar!
         BX24.placement.call('setValue', jsonString);
     }
 }
@@ -249,15 +251,20 @@ function notifyResize() {
 }
 
 BX24.init(function() {
+    // Read the current field value out of Bitrix24's active context placement options
     var options = BX24.getPlacementOptions();
+    
     if (options && options.VALUE) {
         populateFromValue(options.VALUE);
     }
 
-    // Capture the submission sequence natively
+    /* ── DOKPLOY SYNCHRONOUS HANDSHAKE EVENT ── */
     BX24.placement.bindEvent('save', function(event) {
         const finalPayload = JSON.stringify(collectData());
+        
+        // Push the absolute freshest inputs up to Bitrix24 right as save is clicked
         BX24.placement.call('setValue', finalPayload, function() {
+            // Tells the parent view that saving is done and it can safely reload now
             if (event && typeof event.fulfill === 'function') {
                 event.fulfill();
             }
@@ -267,6 +274,7 @@ BX24.init(function() {
     notifyResize();
 });
 
+// Watch key presses and mutations to seamlessly trigger Bitrix24's native save panel
 document.addEventListener('keyup', handleDataChange);
 document.addEventListener('change', handleDataChange);
 </script>
