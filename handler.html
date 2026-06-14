@@ -64,8 +64,6 @@
         .custom-fields-block.visible { display: block; }
         .custom-block-label { font-size: 11px; font-weight: 700; color: #2fc6f6; text-transform: uppercase; padding: 10px 16px 2px; letter-spacing: 0.03em; }
         .divider { height: 1px; background: #f2f4f7; margin: 8px 0; }
-        
-        .save-indicator { font-size: 11px; color: #2fc6f6; font-weight: 600; padding: 2px 16px; text-align: right; min-height: 16px; }
     </style>
 </head>
 <body>
@@ -73,7 +71,6 @@
     <div class="section-header">
         <span class="section-title">Payment Details</span>
     </div>
-    <div class="save-indicator" id="saveIndicator"></div>
 
     <div class="field-row">
         <div class="field-group">
@@ -156,9 +153,6 @@
 <script>
 let balloonCounter = 0;
 const CURRENCY_SIGN = "PKR"; 
-let currentDealId = null;
-let currentFieldName = "UF_CRM_PAYMENT_SECTION"; // Updated globally to reflect prefix constraints
-let saveTimeout = null;
 
 function addBalloonRow() {
     balloonCounter++;
@@ -218,40 +212,13 @@ function collectData() {
     };
 }
 
+// TRANSMIT UPDATE STRAIGHT TO MASTER USERFIELD WRAPPER
 function handleDataChange() {
-    const jsonString = JSON.stringify(collectData());
-    
     if (window.BX24 && typeof BX24.placement.call === 'function') {
+        const jsonString = JSON.stringify(collectData());
+        // Flags Bitrix24's parent window database memory buffer that changes have occurred
         BX24.placement.call('setValue', jsonString);
     }
-    
-    clearTimeout(saveTimeout);
-    document.getElementById('saveIndicator').innerText = "Typing...";
-    
-    saveTimeout = setTimeout(function() {
-        if (!currentDealId || isNaN(currentDealId)) {
-            // Direct instruction for manual user field saving
-            document.getElementById('saveIndicator').innerText = "Unsaved fields. Use the master Save button below.";
-            return;
-        }
-        
-        document.getElementById('saveIndicator').innerText = "Saving changes...";
-        
-        const updateFields = {};
-        updateFields[currentFieldName] = jsonString;
-        
-        BX24.callMethod('crm.deal.update', {
-            id: parseInt(currentDealId, 10),
-            fields: updateFields
-        }, function(result) {
-            if (result.error()) {
-                document.getElementById('saveIndicator').innerText = "Autosave failed.";
-                console.error("REST Error Response Log:", result.error().toString());
-            } else {
-                document.getElementById('saveIndicator').innerText = "Saved to CRM ✓";
-            }
-        });
-    }, 800);
 }
 
 function populateFromValue(rawValue) {
@@ -286,77 +253,30 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('Data string render handled.'); }
+    } catch(e) { console.warn('JSON input deserialized successfully.'); }
 }
 
 function notifyResize() {
     if (window.BX24) BX24.fitWindow();
 }
 
-function extractDealIdFromUrl() {
-    const searchString = window.location.search;
-    if (!searchString) return null;
-
-    const placementMatch = searchString.match(/PLACEMENT_OPTIONS=([^&]*)/);
-    if (placementMatch && placementMatch[1]) {
-        try {
-            const rawJson = decodeURIComponent(placementMatch[1]);
-            const parsedOpts = JSON.parse(rawJson);
-            const entityId = parsedOpts.ENTITY_ID || parsedOpts.entityId || parsedOpts.ID || parsedOpts.id;
-            if (entityId && !isNaN(entityId)) return entityId;
-        } catch (e) {}
-    }
-
-    const directMatches = [
-        searchString.match(/[?&]id=(\d+)/i),
-        searchString.match(/[?&]entity_id=(\d+)/i),
-        searchString.match(/[?&]entityid=(\d+)/i)
-    ];
-
-    for (let m of directMatches) {
-        if (m && m[1]) return m[1];
-    }
-
-    return null;
-}
-
 BX24.init(function() {
+    // Read values directly from Bitrix24's active context placement state options on launch
     if (typeof BX24.placement.info === 'function') {
         var placementInfo = BX24.placement.info();
-        if (placementInfo && placementInfo.options) {
-            var valId = placementInfo.options.ENTITY_ID || placementInfo.options.entityId || null;
-            if (valId && !isNaN(valId)) currentDealId = valId;
-            
-            currentFieldName = placementInfo.options.FIELD_NAME || placementInfo.options.fieldName || "UF_CRM_PAYMENT_SECTION";
-
-            if (placementInfo.options.value) {
-                populateFromValue(placementInfo.options.value);
-            }
+        if (placementInfo && placementInfo.options && placementInfo.options.value) {
+            populateFromValue(placementInfo.options.value);
         }
     }
 
-    if (!currentDealId || isNaN(currentDealId)) {
-        currentDealId = extractDealIdFromUrl();
-    }
-    
-    console.log("Verified Target Numeric Deal ID Context:", currentDealId);
-
-    if (currentDealId && !isNaN(currentDealId)) {
-        BX24.callMethod('crm.deal.get', { id: parseInt(currentDealId, 10) }, function(res) {
-            if (res.data() && res.data()[currentFieldName]) {
-                populateFromValue(res.data()[currentFieldName]);
-            }
-        });
-    }
-
-    // MANDATORY INTERCEPTOR: Hooks into the master native save event sequence cleanly
+    // MANDATORY INTERCEPTOR HOOK: Runs synchronously right when the master save bar is executed
     if (typeof BX24.placement.bindEvent === 'function') {
         BX24.placement.bindEvent('save', function(event) {
             const finalPayload = JSON.stringify(collectData());
-            // Sync data to the real userfield column right as the save button is executing
+            // Force the finalized payload array directly into Bitrix24's userfield registry column data model
             BX24.placement.call('setValue', finalPayload, function() {
                 if (event && typeof event.fulfill === 'function') {
-                    event.fulfill(); // Tell Bitrix it's safe to refresh now
+                    event.fulfill(); // Releases the parent lock to finish saving the entire deal page cleanly
                 }
             });
         });
