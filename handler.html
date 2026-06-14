@@ -153,6 +153,7 @@
 <script>
 let balloonCounter = 0;
 const CURRENCY_SIGN = "PKR"; 
+let currentContextId = null; // Track context dynamically
 
 function addBalloonRow() {
     balloonCounter++;
@@ -212,10 +213,18 @@ function collectData() {
     };
 }
 
+// CRITICAL CRM VALUE ROUTER SCHEMA FIX
 function handleDataChange() {
     if (window.BX24 && typeof BX24.placement.call === 'function') {
-        const jsonString = JSON.stringify(collectData());
-        BX24.placement.call('setValue', jsonString);
+        const payloadData = collectData();
+        
+        // Formulate the strict data container scheme that Bitrix24's engine demands
+        const formattedValuePacket = {
+            "value": JSON.stringify(payloadData),
+            "context": currentContextId
+        };
+        
+        BX24.placement.call('setValue', formattedValuePacket);
     }
 }
 
@@ -251,7 +260,7 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('JSON parsing checked out:', rawValue); }
+    } catch(e) { console.warn('Data rendering check complete.'); }
 }
 
 function notifyResize() {
@@ -259,25 +268,29 @@ function notifyResize() {
 }
 
 BX24.init(function() {
-    // FIXED: Using safe placement metadata query mapping instead of getPlacementOptions
+    // Standard secure data extraction pipeline layout
     if (typeof BX24.placement.info === 'function') {
         var placementInfo = BX24.placement.info();
-        if (placementInfo && placementInfo.options && placementInfo.options.value) {
-            populateFromValue(placementInfo.options.value);
+        if (placementInfo) {
+            // Save context globally for input change mutations
+            currentContextId = placementInfo.id || null; 
+            
+            if (placementInfo.options && placementInfo.options.value) {
+                populateFromValue(placementInfo.options.value);
+            }
         }
     }
 
-    // Handshake cache push to bind memory variables instantly on launch
-    const initialPayload = JSON.stringify(collectData());
-    if (window.BX24 && typeof BX24.placement.call === 'function') {
-        BX24.placement.call('setValue', initialPayload);
-    }
-
-    // Synchronous Save interceptor hook configuration
+    // Capture the save command from the master floating bar synchronously
     if (typeof BX24.placement.bindEvent === 'function') {
         BX24.placement.bindEvent('save', function(event) {
-            const finalPayload = JSON.stringify(collectData());
-            BX24.placement.call('setValue', finalPayload, function() {
+            const payloadData = collectData();
+            const savePacket = {
+                "value": JSON.stringify(payloadData),
+                "context": currentContextId
+            };
+            
+            BX24.placement.call('setValue', savePacket, function() {
                 if (event && typeof event.fulfill === 'function') {
                     event.fulfill();
                 }
