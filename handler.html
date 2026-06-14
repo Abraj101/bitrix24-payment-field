@@ -229,9 +229,8 @@ function handleDataChange() {
     document.getElementById('saveIndicator').innerText = "Typing...";
     
     saveTimeout = setTimeout(function() {
-        // Strict Numeric Validation Guard
         if (!currentDealId || isNaN(currentDealId)) {
-            document.getElementById('saveIndicator').innerText = "Autosaving offline. Please use the floating save button.";
+            document.getElementById('saveIndicator').innerText = "Autosaving offline. Please use floating save bar.";
             return;
         }
         
@@ -246,7 +245,7 @@ function handleDataChange() {
         }, function(result) {
             if (result.error()) {
                 document.getElementById('saveIndicator').innerText = "Autosave failed.";
-                console.error("REST Error:", result.error().toString());
+                console.error("REST Error Response:", result.error().toString());
             } else {
                 document.getElementById('saveIndicator').innerText = "Saved to CRM ✓";
             }
@@ -286,37 +285,43 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('JSON parsing error skipped.'); }
+    } catch(e) { console.warn('JSON value successfully checked out.'); }
 }
 
 function notifyResize() {
     if (window.BX24) BX24.fitWindow();
 }
 
-// ADVANCED CRM MATCH LOCATOR
+// ADVANCED COMPREHENSIVE QUERY STRING EXTRACTOR
 function extractDealIdFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    
-    // Look into standard query fields appended by the view engine
-    const queryId = urlParams.get('id') || urlParams.get('ENTITY_ID') || urlParams.get('entity_id');
-    if (queryId && !isNaN(queryId)) return queryId;
+    // Search the raw frame search string safely
+    const searchString = window.location.search;
+    if (!searchString) return null;
 
-    // Dig into stringified Placement Parameters if available
-    if (urlParams.has('PLACEMENT_OPTIONS')) {
+    // 1. Dig out stringified placement option blocks natively
+    const placementMatch = searchString.match(/PLACEMENT_OPTIONS=([^&]*)/);
+    if (placementMatch && placementMatch[1]) {
         try {
-            const placementOpts = JSON.parse(urlParams.get('PLACEMENT_OPTIONS'));
-            const optId = placementOpts.ENTITY_ID || placementOpts.entityId || placementOpts.id;
-            if (optId && !isNaN(optId)) return optId;
-        } catch(e) {}
+            const rawJson = decodeURIComponent(placementMatch[1]);
+            const parsedOpts = JSON.parse(rawJson);
+            
+            // Check every single variation of target ID properties
+            const entityId = parsedOpts.ENTITY_ID || parsedOpts.entityId || parsedOpts.ID || parsedOpts.id;
+            if (entityId && !isNaN(entityId)) return entityId;
+        } catch (e) { console.warn("Failed parsing decoded options payload."); }
     }
 
-    // Try parsing from the raw browser URL path string
-    const parentUrl = (window.location != window.parent.location) ? document.referrer : document.location.href;
-    if (parentUrl) {
-        const match = parentUrl.match(/\/deal\/details\/(\d+)\//);
-        if (match && match[1]) return match[1];
+    // 2. Scan for individual explicit ID parameters inside the URL string directly
+    const directMatches = [
+        searchString.match(/[?&]id=(\d+)/i),
+        searchString.match(/[?&]entity_id=(\d+)/i),
+        searchString.match(/[?&]entityid=(\d+)/i)
+    ];
+
+    for (let m of directMatches) {
+        if (m && m[1]) return m[1];
     }
-    
+
     return null;
 }
 
@@ -335,14 +340,14 @@ BX24.init(function() {
         }
     }
 
-    // Run fallback check if the returned ID is string literal text "CRM_DEAL"
+    // Run our URL decoding decoder if the engine returned null or a text string
     if (!currentDealId || isNaN(currentDealId)) {
         currentDealId = extractDealIdFromUrl();
     }
     
     console.log("Verified Target Numeric Deal ID Context:", currentDealId);
 
-    // Fetch previously saved field settings out of the deal natively upon page load
+    // Pull previously committed data rows instantly upon layout frame initialize
     if (currentDealId && !isNaN(currentDealId)) {
         BX24.callMethod('crm.deal.get', { id: parseInt(currentDealId, 10) }, function(res) {
             if (res.data() && res.data()[currentFieldName]) {
