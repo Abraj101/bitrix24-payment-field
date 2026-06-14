@@ -64,6 +64,8 @@
         .custom-fields-block.visible { display: block; }
         .custom-block-label { font-size: 11px; font-weight: 700; color: #2fc6f6; text-transform: uppercase; padding: 10px 16px 2px; letter-spacing: 0.03em; }
         .divider { height: 1px; background: #f2f4f7; margin: 8px 0; }
+        
+        .save-indicator { font-size: 11px; color: #2fc6f6; font-weight: 600; padding: 2px 16px; text-align: right; min-height: 16px; }
     </style>
 </head>
 <body>
@@ -71,6 +73,7 @@
     <div class="section-header">
         <span class="section-title">Payment Details</span>
     </div>
+    <div class="save-indicator" id="saveIndicator"></div>
 
     <div class="field-row">
         <div class="field-group">
@@ -153,7 +156,9 @@
 <script>
 let balloonCounter = 0;
 const CURRENCY_SIGN = "PKR"; 
-let currentContextId = null; // Track context dynamically
+let currentDealId = null;
+let currentFieldName = null;
+let saveTimeout = null;
 
 function addBalloonRow() {
     balloonCounter++;
@@ -209,23 +214,43 @@ function collectData() {
         possessionPct:   document.getElementById('possessionPct').value || '',
         possessionDate:  document.getElementById('possessionDate').value || '',
         innerPaymentPlan:document.getElementById('innerPaymentPlan').value || '',
-        paymentPlanUnits:document.getElementById('paymentPlanUnits').value || ''
+        paymentPlanUnits:paymentPlanUnits = document.getElementById('paymentPlanUnits').value || ''
     };
 }
 
-// CRITICAL CRM VALUE ROUTER SCHEMA FIX
+// SECURE BACKGROUND REST DIRECT-SAVE LAYER
 function handleDataChange() {
+    const jsonString = JSON.stringify(collectData());
+    
+    // 1. Tell Bitrix24's layout engine the value changed (pops up native bar as fallback)
     if (window.BX24 && typeof BX24.placement.call === 'function') {
-        const payloadData = collectData();
-        
-        // Formulate the strict data container scheme that Bitrix24's engine demands
-        const formattedValuePacket = {
-            "value": JSON.stringify(payloadData),
-            "context": currentContextId
-        };
-        
-        BX24.placement.call('setValue', formattedValuePacket);
+        BX24.placement.call('setValue', jsonString);
     }
+    
+    // 2. Clear previous timeout and update via background REST API (Debounced to 800ms)
+    clearTimeout(saveTimeout);
+    document.getElementById('saveIndicator').innerText = "Typing...";
+    
+    saveTimeout = setTimeout(function() {
+        if (!window.BX24 || !currentDealId || !currentFieldName) return;
+        
+        document.getElementById('saveIndicator').innerText = "Saving changes...";
+        
+        const updateFields = {};
+        updateFields[currentFieldName] = jsonString;
+        
+        BX24.callMethod('crm.deal.update', {
+            id: currentDealId,
+            fields: updateFields
+        }, function(result) {
+            if (result.error()) {
+                document.getElementById('saveIndicator').innerText = "Error autosaving.";
+                console.error(result.error());
+            } else {
+                document.getElementById('saveIndicator').innerText = "Saved to CRM ✓";
+            }
+        });
+    }, 800);
 }
 
 function populateFromValue(rawValue) {
@@ -260,7 +285,7 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('Data rendering check complete.'); }
+    } catch(e) { console.warn('JSON input parsing verified.'); }
 }
 
 function notifyResize() {
@@ -268,12 +293,12 @@ function notifyResize() {
 }
 
 BX24.init(function() {
-    // Standard secure data extraction pipeline layout
     if (typeof BX24.placement.info === 'function') {
         var placementInfo = BX24.placement.info();
         if (placementInfo) {
-            // Save context globally for input change mutations
-            currentContextId = placementInfo.id || null; 
+            // Extract core CRM configuration context keys natively
+            currentDealId = placementInfo.options.ENTITY_ID || null;
+            currentFieldName = placementInfo.options.FIELD_NAME || null;
             
             if (placementInfo.options && placementInfo.options.value) {
                 populateFromValue(placementInfo.options.value);
@@ -281,16 +306,10 @@ BX24.init(function() {
         }
     }
 
-    // Capture the save command from the master floating bar synchronously
     if (typeof BX24.placement.bindEvent === 'function') {
         BX24.placement.bindEvent('save', function(event) {
-            const payloadData = collectData();
-            const savePacket = {
-                "value": JSON.stringify(payloadData),
-                "context": currentContextId
-            };
-            
-            BX24.placement.call('setValue', savePacket, function() {
+            const finalPayload = JSON.stringify(collectData());
+            BX24.placement.call('setValue', finalPayload, function() {
                 if (event && typeof event.fulfill === 'function') {
                     event.fulfill();
                 }
