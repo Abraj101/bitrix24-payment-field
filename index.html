@@ -2,69 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Southlofts Payment Engine Setup</title>
+    <title>Setup</title>
     <script src="https://api.bitrix24.com/api/v1/"></script>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            font-size: 14px; background: #f4f7f6; display: flex; align-items: center; justify-content: center; min-height: 100vh;
-        }
-        .setup-card {
-            background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            max-width: 480px; width: 100%; text-align: center;
-        }
-        h2 { color: #535c69; font-size: 18px; margin-bottom: 12px; }
-        p { color: #7f8c8d; line-height: 1.5; margin-bottom: 24px; }
-        .btn-register {
-            background: #2fc6f6; color: #fff; padding: 12px 24px; border: none; border-radius: 4px;
-            font-weight: 700; cursor: pointer; font-size: 14px; width: 100%; transition: background 0.15s;
-        }
-        .btn-register:hover { background: #1cb5e3; }
-    </style>
 </head>
-<body>
-<div class="setup-card">
-    <h2>Southlofts Payment Engine Installation</h2>
-    <p>Click below to map your custom payment, discount, and balloon payment tracking fields directly into your CRM Deal layout templates.</p>
-    <button class="btn-register" onclick="installUserField()">Register User Field Layout</button>
-</div>
-
+<body style="font-family: sans-serif; text-align: center; padding: 40px;">
+    <h2>Southlofts Payment Engine</h2>
+    <button onclick="install()" style="background:#2fc6f6; color:#fff; padding:12px 24px; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Register User Field</button>
 <script>
-function installUserField() {
-    if (!window.BX24) {
-        alert("Error: Bitrix24 engine framework not detected.");
-        return;
-    }
-    
-    const productionHandlerUrl = window.location.origin + '/handler.html';
-    
-    // Register custom user field type template
+function install() {
     BX24.callMethod('userfieldtype.add', {
         USER_TYPE_ID: 'southlofts_payment_field',
-        HANDLER:      productionHandlerUrl,
-        TITLE:        'Payment Details',
-        DESCRIPTION:  'Custom interactive field template block for real estate payments.',
-        OPTIONS:      { height: 450 }
-    }, function(res1) {
-        
-        // FIXED: Using mandatory UF_CRM_ prefixing and localized label mapping objects
+        HANDLER: window.location.origin + '/handler.html',
+        TITLE: 'Payment Details',
+        OPTIONS: { height: 450 }
+    }, function() {
         BX24.callMethod('crm.deal.userfield.add', {
             fields: {
-                FIELD_NAME:        'UF_CRM_PAYMENT_SECTION', // Strict naming rule resolved
-                USER_TYPE_ID:      'southlofts_payment_field',
-                EDIT_FORM_LABEL:   { "en": "Payment Details" },
-                LIST_COLUMN_LABEL: { "en": "Payment Details" },
-                MANDATORY:         'N',
-                SHOW_FILTER:       'N',
-                SHOW_IN_LIST:      'Y'
+                FIELD_NAME: 'UF_CRM_PAYMENT_SECTION',
+                USER_TYPE_ID: 'southlofts_payment_field',
+                EDIT_FORM_LABEL: { "en": "Payment Details" },
+                LIST_COLUMN_LABEL: { "en": "Payment Details" }
             }
-        }, function(res2) {
-            if (res2.error()) {
-                alert('Installation aborted: ' + res2.error().toString());
-            } else {
-                alert('✓ Field schema successfully mounted to your CRM! Field created with ID: ' + res2.data());
-            }
+        }, function(res) {
+            if(res.error()) alert(res.error().toString());
+            else alert('✓ Registered successfully! Field ID: ' + res.data());
         });
     });
 }
