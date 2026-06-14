@@ -37,7 +37,6 @@ function installUserField() {
         return;
     }
     
-    // Dynamically captures your clean Dokploy domain URL path mapping
     const productionHandlerUrl = window.location.origin + '/handler.html';
     
     // Register custom user field type blueprint
@@ -48,19 +47,24 @@ function installUserField() {
         DESCRIPTION:  'Custom interactive field template block for real estate payments.',
         OPTIONS:      { height: 450 }
     }, function(res1) {
-        // Register user field structural instance inside CRM deal entities columns
+        
+        // FIXED: Using mandatory UF_CRM_ prefix and structural labels object 
         BX24.callMethod('crm.deal.userfield.add', {
             fields: {
-                FIELD_NAME:        'PAYMENT_SECTION',
+                FIELD_NAME:        'UF_CRM_PAYMENT_SECTION', // Strict requirement fixed
                 USER_TYPE_ID:      'southlofts_payment_field',
-                EDIT_FORM_LABEL:   'Payment Details',
-                LIST_COLUMN_LABEL: 'Payment Details',
+                EDIT_FORM_LABEL:   { "en": "Payment Details" },
+                LIST_COLUMN_LABEL: { "en": "Payment Details" },
                 MANDATORY:         'N',
                 SHOW_FILTER:       'N',
                 SHOW_IN_LIST:      'Y'
             }
         }, function(res2) {
-            alert('✓ Field schema successfully mounted to your CRM! You can now close this window slider safely and test inside any Deal Profile Card.');
+            if (res2.error()) {
+                alert('Installation aborted: ' + res2.error().toString());
+            } else {
+                alert('✓ Field schema successfully mounted to your CRM! Field created with ID: ' + res2.data());
+            }
         });
     });
 }
