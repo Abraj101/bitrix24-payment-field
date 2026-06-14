@@ -212,11 +212,11 @@ function collectData() {
     };
 }
 
-// NATIVE IFRAME FORM BUFFER SYNC
+// REAL-TIME CACHE SYNCHRONIZATION WITH PARENT CONTAINER
 function handleDataChange() {
     if (window.BX24 && typeof BX24.placement.call === 'function') {
         const jsonString = JSON.stringify(collectData());
-        // Instantly updates Bitrix24 parent cache to trigger the native floating Save Bar
+        // Directly maps data changes into Bitrix24's active column buffer layer
         BX24.placement.call('setValue', jsonString);
     }
 }
@@ -253,7 +253,7 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('JSON string successfully decoded.'); }
+    } catch(e) { console.warn('JSON string parsed cleanly.'); }
 }
 
 function notifyResize() {
@@ -261,7 +261,7 @@ function notifyResize() {
 }
 
 BX24.init(function() {
-    // Read the database value straight from native initialization payload context options
+    // Automatically load existing database records on startup
     if (typeof BX24.placement.info === 'function') {
         var placementInfo = BX24.placement.info();
         if (placementInfo && placementInfo.options && placementInfo.options.value) {
@@ -269,14 +269,14 @@ BX24.init(function() {
         }
     }
 
-    // MANDATORY INTERCEPTOR: Hooks directly into the native master save bar loop
+    // MANDATORY INTERCEPTOR: Hooks into the master native save event sequence cleanly
     if (typeof BX24.placement.bindEvent === 'function') {
         BX24.placement.bindEvent('save', function(event) {
             const finalPayload = JSON.stringify(collectData());
-            // Sync finalized data array right as the user hits the native save button
+            // Sync data directly to Bitrix24's form memory cache right as save button is clicked
             BX24.placement.call('setValue', finalPayload, function() {
                 if (event && typeof event.fulfill === 'function') {
-                    event.fulfill(); // Release parent execution context to refresh the page
+                    event.fulfill(); // Tell Bitrix it is now safe to reload the page
                 }
             });
         });
