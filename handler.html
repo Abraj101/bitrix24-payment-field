@@ -212,11 +212,11 @@ function collectData() {
     };
 }
 
-// TRANSMIT UPDATE STRAIGHT TO MASTER USERFIELD WRAPPER
+// NATIVE IFRAME FORM BUFFER SYNC
 function handleDataChange() {
     if (window.BX24 && typeof BX24.placement.call === 'function') {
         const jsonString = JSON.stringify(collectData());
-        // Flags Bitrix24's parent window database memory buffer that changes have occurred
+        // Instantly updates Bitrix24 parent cache to trigger the native floating Save Bar
         BX24.placement.call('setValue', jsonString);
     }
 }
@@ -253,7 +253,7 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('JSON input deserialized successfully.'); }
+    } catch(e) { console.warn('JSON string successfully decoded.'); }
 }
 
 function notifyResize() {
@@ -261,7 +261,7 @@ function notifyResize() {
 }
 
 BX24.init(function() {
-    // Read values directly from Bitrix24's active context placement state options on launch
+    // Read the database value straight from native initialization payload context options
     if (typeof BX24.placement.info === 'function') {
         var placementInfo = BX24.placement.info();
         if (placementInfo && placementInfo.options && placementInfo.options.value) {
@@ -269,14 +269,14 @@ BX24.init(function() {
         }
     }
 
-    // MANDATORY INTERCEPTOR HOOK: Runs synchronously right when the master save bar is executed
+    // MANDATORY INTERCEPTOR: Hooks directly into the native master save bar loop
     if (typeof BX24.placement.bindEvent === 'function') {
         BX24.placement.bindEvent('save', function(event) {
             const finalPayload = JSON.stringify(collectData());
-            // Force the finalized payload array directly into Bitrix24's userfield registry column data model
+            // Sync finalized data array right as the user hits the native save button
             BX24.placement.call('setValue', finalPayload, function() {
                 if (event && typeof event.fulfill === 'function') {
-                    event.fulfill(); // Releases the parent lock to finish saving the entire deal page cleanly
+                    event.fulfill(); // Release parent execution context to refresh the page
                 }
             });
         });
