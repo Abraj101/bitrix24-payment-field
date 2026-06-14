@@ -157,7 +157,7 @@
 let balloonCounter = 0;
 const CURRENCY_SIGN = "PKR"; 
 let currentDealId = null;
-let currentFieldName = "UF_CRM_PAYMENT_SECTION"; // Updated to strict prefix naming
+let currentFieldName = "UF_CRM_PAYMENT_SECTION"; // Updated globally to reflect prefix constraints
 let saveTimeout = null;
 
 function addBalloonRow() {
@@ -230,7 +230,8 @@ function handleDataChange() {
     
     saveTimeout = setTimeout(function() {
         if (!currentDealId || isNaN(currentDealId)) {
-            document.getElementById('saveIndicator').innerText = "Please use the floating save bar.";
+            // Direct instruction for manual user field saving
+            document.getElementById('saveIndicator').innerText = "Unsaved fields. Use the master Save button below.";
             return;
         }
         
@@ -245,7 +246,7 @@ function handleDataChange() {
         }, function(result) {
             if (result.error()) {
                 document.getElementById('saveIndicator').innerText = "Autosave failed.";
-                console.error("REST Error Response:", result.error().toString());
+                console.error("REST Error Response Log:", result.error().toString());
             } else {
                 document.getElementById('saveIndicator').innerText = "Saved to CRM ✓";
             }
@@ -285,7 +286,7 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('JSON parsing verified.'); }
+    } catch(e) { console.warn('Data string render handled.'); }
 }
 
 function notifyResize() {
@@ -348,12 +349,14 @@ BX24.init(function() {
         });
     }
 
+    // MANDATORY INTERCEPTOR: Hooks into the master native save event sequence cleanly
     if (typeof BX24.placement.bindEvent === 'function') {
         BX24.placement.bindEvent('save', function(event) {
             const finalPayload = JSON.stringify(collectData());
+            // Sync data to the real userfield column right as the save button is executing
             BX24.placement.call('setValue', finalPayload, function() {
                 if (event && typeof event.fulfill === 'function') {
-                    event.fulfill();
+                    event.fulfill(); // Tell Bitrix it's safe to refresh now
                 }
             });
         });

@@ -39,7 +39,7 @@ function installUserField() {
     
     const productionHandlerUrl = window.location.origin + '/handler.html';
     
-    // Register custom user field type blueprint
+    // Register custom user field type template
     BX24.callMethod('userfieldtype.add', {
         USER_TYPE_ID: 'southlofts_payment_field',
         HANDLER:      productionHandlerUrl,
@@ -48,10 +48,10 @@ function installUserField() {
         OPTIONS:      { height: 450 }
     }, function(res1) {
         
-        // FIXED: Using mandatory UF_CRM_ prefix and structural labels object 
+        // FIXED: Using mandatory UF_CRM_ prefixing and localized label mapping objects
         BX24.callMethod('crm.deal.userfield.add', {
             fields: {
-                FIELD_NAME:        'UF_CRM_PAYMENT_SECTION', // Strict requirement fixed
+                FIELD_NAME:        'UF_CRM_PAYMENT_SECTION', // Strict naming rule resolved
                 USER_TYPE_ID:      'southlofts_payment_field',
                 EDIT_FORM_LABEL:   { "en": "Payment Details" },
                 LIST_COLUMN_LABEL: { "en": "Payment Details" },
