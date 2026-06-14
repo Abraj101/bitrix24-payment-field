@@ -212,9 +212,8 @@ function collectData() {
     };
 }
 
-// Global hook to alert Bitrix24's parent window of active data updates
 function handleDataChange() {
-    if (window.BX24) {
+    if (window.BX24 && typeof BX24.placement.call === 'function') {
         const jsonString = JSON.stringify(collectData());
         BX24.placement.call('setValue', jsonString);
     }
@@ -260,22 +259,31 @@ function notifyResize() {
 }
 
 BX24.init(function() {
-    // Standard data extraction pipeline
-    var options = BX24.getPlacementOptions();
-    
-    if (options && options.VALUE) {
-        populateFromValue(options.VALUE);
+    // FIXED: Using safe placement metadata query mapping instead of getPlacementOptions
+    if (typeof BX24.placement.info === 'function') {
+        var placementInfo = BX24.placement.info();
+        if (placementInfo && placementInfo.options && placementInfo.options.value) {
+            populateFromValue(placementInfo.options.value);
+        }
     }
 
-    // Capture the save command from the master floating bar synchronously
-    BX24.placement.bindEvent('save', function(event) {
-        const finalPayload = JSON.stringify(collectData());
-        BX24.placement.call('setValue', finalPayload, function() {
-            if (event && typeof event.fulfill === 'function') {
-                event.fulfill();
-            }
+    // Handshake cache push to bind memory variables instantly on launch
+    const initialPayload = JSON.stringify(collectData());
+    if (window.BX24 && typeof BX24.placement.call === 'function') {
+        BX24.placement.call('setValue', initialPayload);
+    }
+
+    // Synchronous Save interceptor hook configuration
+    if (typeof BX24.placement.bindEvent === 'function') {
+        BX24.placement.bindEvent('save', function(event) {
+            const finalPayload = JSON.stringify(collectData());
+            BX24.placement.call('setValue', finalPayload, function() {
+                if (event && typeof event.fulfill === 'function') {
+                    event.fulfill();
+                }
+            });
         });
-    });
+    }
 
     notifyResize();
 });
