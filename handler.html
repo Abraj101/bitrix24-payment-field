@@ -157,7 +157,7 @@
 let balloonCounter = 0;
 const CURRENCY_SIGN = "PKR"; 
 let currentDealId = null;
-let currentFieldName = null;
+let currentFieldName = "UF_CRM_PAYMENT_SECTION"; // Default system registration fallback name
 let saveTimeout = null;
 
 function addBalloonRow() {
@@ -221,7 +221,6 @@ function collectData() {
 function handleDataChange() {
     const jsonString = JSON.stringify(collectData());
     
-    // Push layout update notification straight up to parent frame layout context
     if (window.BX24 && typeof BX24.placement.call === 'function') {
         BX24.placement.call('setValue', jsonString);
     }
@@ -230,18 +229,21 @@ function handleDataChange() {
     document.getElementById('saveIndicator').innerText = "Typing...";
     
     saveTimeout = setTimeout(function() {
-        if (!window.BX24 || !currentDealId || !currentFieldName) {
-            console.warn("Autosave halted: Missing ID ("+currentDealId+") or FieldName ("+currentFieldName+")");
+        // VERIFICATION GUARD: Block the API if the fallback pipeline still didn't resolve an ID
+        if (!currentDealId) {
+            console.error("Cannot update deal: currentDealId is missing from parameters.");
+            document.getElementById('saveIndicator').innerText = "Error: No Deal ID found.";
             return;
         }
         
         document.getElementById('saveIndicator').innerText = "Saving changes...";
+        console.log("Attempting background update on Deal ID:", currentDealId, "for field:", currentFieldName);
         
         const updateFields = {};
         updateFields[currentFieldName] = jsonString;
         
         BX24.callMethod('crm.deal.update', {
-            id: currentDealId,
+            id: parseInt(currentDealId, 10),
             fields: updateFields
         }, function(result) {
             if (result.error()) {
@@ -286,26 +288,57 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('Data string loaded.'); }
+    } catch(e) { console.warn('Data string render handled.'); }
 }
 
 function notifyResize() {
     if (window.BX24) BX24.fitWindow();
 }
 
+// BULLETPROOF FALLBACK ID RETRIEVER
+function extractDealIdFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // User fields pass their parent entity configuration context through query bindings
+    if (urlParams.has('PLACEMENT_OPTIONS')) {
+        try {
+            const placementOpts = JSON.parse(urlParams.get('PLACEMENT_OPTIONS'));
+            if (placementOpts.ENTITY_ID || placementOpts.entityId) {
+                return placementOpts.ENTITY_ID || placementOpts.entityId;
+            }
+        } catch(e) {}
+    }
+    
+    // Generic URL fallback locators used across alternative versions
+    return urlParams.get('id') || urlParams.get('ENTITY_ID') || urlParams.get('entity_id');
+}
+
 BX24.init(function() {
+    // 1. Try resolving via standard context platform placements
     if (typeof BX24.placement.info === 'function') {
         var placementInfo = BX24.placement.info();
         if (placementInfo && placementInfo.options) {
-            // FIXED PARSING: Check all casing options for entityId and fieldName
-            currentDealId = placementInfo.options.ENTITY_ID || placementInfo.options.entityId || placementInfo.options.id || null;
-            currentFieldName = placementInfo.options.FIELD_NAME || placementInfo.options.fieldName || null;
-            
-            var initialValue = placementInfo.options.VALUE || placementInfo.options.value || null;
-            if (initialValue) {
-                populateFromValue(initialValue);
+            currentDealId = placementInfo.options.ENTITY_ID || placementInfo.options.entityId || null;
+            if (placementInfo.options.value) {
+                populateFromValue(placementInfo.options.value);
             }
         }
+    }
+
+    // 2. RUN BULLETPROOF URL FALLBACK IF STILL NULL
+    if (!currentDealId) {
+        currentDealId = extractDealIdFromUrl();
+    }
+    
+    console.log("Resolved Active Target Deal ID Context:", currentDealId);
+
+    // Initial background read loop parameters sync check
+    if (currentDealId && (!document.getElementById('paymentPlan').value)) {
+        BX24.callMethod('crm.deal.get', { id: currentDealId }, function(res) {
+            if (res.data() && res.data()[currentFieldName]) {
+                populateFromValue(res.data()[currentFieldName]);
+            }
+        });
     }
 
     if (typeof BX24.placement.bindEvent === 'function') {
