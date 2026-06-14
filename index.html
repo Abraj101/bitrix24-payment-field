@@ -2,31 +2,74 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Setup</title>
+    <title>Southlofts Payment Engine Setup</title>
     <script src="https://api.bitrix24.com/api/v1/"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            font-size: 14px; background: #f4f7f6; display: flex; align-items: center; justify-content: center; min-height: 100vh;
+        }
+        .setup-card {
+            background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            max-width: 480px; width: 100%; text-align: center;
+        }
+        h2 { color: #535c69; font-size: 18px; margin-bottom: 12px; }
+        p { color: #7f8c8d; line-height: 1.5; margin-bottom: 24px; }
+        .btn-register {
+            background: #2fc6f6; color: #fff; padding: 12px 24px; border: none; border-radius: 4px;
+            font-weight: 700; cursor: pointer; font-size: 14px; width: 100%; transition: background 0.15s;
+        }
+        .btn-register:hover { background: #1cb5e3; }
+        .status-log { margin-top: 15px; font-size: 12px; color: #7f8c8d; text-align: left; background: #f8fafc; padding: 10px; border-radius: 4px; border: 1px solid #e2e8f0; display: none; }
+    </style>
 </head>
-<body style="font-family: sans-serif; text-align: center; padding: 40px;">
-    <h2>Southlofts Payment Engine</h2>
-    <button onclick="install()" style="background:#2fc6f6; color:#fff; padding:12px 24px; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Register User Field</button>
+<body>
+<div class="setup-card">
+    <h2>Southlofts Payment Engine Setup</h2>
+    <p>Click below to automatically register the side-panel custom layout block inside your CRM deal card views.</p>
+    <button class="btn-register" onclick="bindSidebarWidget()">Activate Sidebar Placement</button>
+    <div class="status-log" id="statusLog"></div>
+</div>
+
 <script>
-function install() {
-    BX24.callMethod('userfieldtype.add', {
-        USER_TYPE_ID: 'southlofts_payment_field',
-        HANDLER: window.location.origin + '/handler.html',
-        TITLE: 'Payment Details',
-        OPTIONS: { height: 450 }
-    }, function() {
-        BX24.callMethod('crm.deal.userfield.add', {
-            fields: {
-                FIELD_NAME: 'UF_CRM_PAYMENT_SECTION',
-                USER_TYPE_ID: 'southlofts_payment_field',
-                EDIT_FORM_LABEL: { "en": "Payment Details" },
-                LIST_COLUMN_LABEL: { "en": "Payment Details" }
+function logStatus(msg) {
+    const logBox = document.getElementById('statusLog');
+    logBox.style.display = 'block';
+    logBox.innerHTML += msg + '<br>';
+}
+
+function bindSidebarWidget() {
+    if (!window.BX24) {
+        alert("Error: Bitrix24 engine framework not detected.");
+        return;
+    }
+    
+    document.getElementById('statusLog').innerHTML = '';
+    logStatus("Initiating integration sequence...");
+    
+    const targetHandlerUrl = window.location.origin + '/handler.html';
+    
+    // Register directly to the CRM activity column pipeline automatically
+    BX24.callMethod('placement.bind', {
+        PLACEMENT: 'CRM_DEAL_DETAIL_ACTIVITY',
+        HANDLER:   targetHandlerUrl,
+        TITLE:     'Payment Details'
+    }, function(result) {
+        if (result.error()) {
+            const errorMsg = result.error().toString();
+            // Handle if the placement is already mapped cleanly
+            if (errorMsg.indexOf('already exists') !== -1) {
+                logStatus("<span style='color: #2e7d32; font-weight: bold;'>✓ Active:</span> Placement is already mapped securely.");
+                alert("✓ Configuration active! Payment details widget is available inside your Deal views.");
+            } else {
+                logStatus("<span style='color: #c62828; font-weight: bold;'>Error:</span> " + errorMsg);
+                alert("Placement registration failed: " + errorMsg);
             }
-        }, function(res) {
-            if(res.error()) alert(res.error().toString());
-            else alert('✓ Registered successfully! Field ID: ' + res.data());
-        });
+        } else {
+            logStatus("<span style='color: #2e7d32; font-weight: bold;'>✓ Success:</span> Widget successfully bound to Deal sidebar.");
+            alert("✓ Application successfully registered inside your CRM interface layout!");
+        }
     });
 }
 </script>
