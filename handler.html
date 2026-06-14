@@ -214,25 +214,26 @@ function collectData() {
         possessionPct:   document.getElementById('possessionPct').value || '',
         possessionDate:  document.getElementById('possessionDate').value || '',
         innerPaymentPlan:document.getElementById('innerPaymentPlan').value || '',
-        paymentPlanUnits:paymentPlanUnits = document.getElementById('paymentPlanUnits').value || ''
+        paymentPlanUnits:document.getElementById('paymentPlanUnits').value || ''
     };
 }
 
-// SECURE BACKGROUND REST DIRECT-SAVE LAYER
 function handleDataChange() {
     const jsonString = JSON.stringify(collectData());
     
-    // 1. Tell Bitrix24's layout engine the value changed (pops up native bar as fallback)
+    // Push layout update notification straight up to parent frame layout context
     if (window.BX24 && typeof BX24.placement.call === 'function') {
         BX24.placement.call('setValue', jsonString);
     }
     
-    // 2. Clear previous timeout and update via background REST API (Debounced to 800ms)
     clearTimeout(saveTimeout);
     document.getElementById('saveIndicator').innerText = "Typing...";
     
     saveTimeout = setTimeout(function() {
-        if (!window.BX24 || !currentDealId || !currentFieldName) return;
+        if (!window.BX24 || !currentDealId || !currentFieldName) {
+            console.warn("Autosave halted: Missing ID ("+currentDealId+") or FieldName ("+currentFieldName+")");
+            return;
+        }
         
         document.getElementById('saveIndicator').innerText = "Saving changes...";
         
@@ -244,8 +245,8 @@ function handleDataChange() {
             fields: updateFields
         }, function(result) {
             if (result.error()) {
-                document.getElementById('saveIndicator').innerText = "Error autosaving.";
-                console.error(result.error());
+                document.getElementById('saveIndicator').innerText = "Autosave failed.";
+                console.error("REST Error Response Trace:", result.error().toString());
             } else {
                 document.getElementById('saveIndicator').innerText = "Saved to CRM ✓";
             }
@@ -285,7 +286,7 @@ function populateFromValue(rawValue) {
         });
         if (data.innerPaymentPlan) document.getElementById('innerPaymentPlan').value = data.innerPaymentPlan;
         
-    } catch(e) { console.warn('JSON input parsing verified.'); }
+    } catch(e) { console.warn('Data string loaded.'); }
 }
 
 function notifyResize() {
@@ -295,13 +296,14 @@ function notifyResize() {
 BX24.init(function() {
     if (typeof BX24.placement.info === 'function') {
         var placementInfo = BX24.placement.info();
-        if (placementInfo) {
-            // Extract core CRM configuration context keys natively
-            currentDealId = placementInfo.options.ENTITY_ID || null;
-            currentFieldName = placementInfo.options.FIELD_NAME || null;
+        if (placementInfo && placementInfo.options) {
+            // FIXED PARSING: Check all casing options for entityId and fieldName
+            currentDealId = placementInfo.options.ENTITY_ID || placementInfo.options.entityId || placementInfo.options.id || null;
+            currentFieldName = placementInfo.options.FIELD_NAME || placementInfo.options.fieldName || null;
             
-            if (placementInfo.options && placementInfo.options.value) {
-                populateFromValue(placementInfo.options.value);
+            var initialValue = placementInfo.options.VALUE || placementInfo.options.value || null;
+            if (initialValue) {
+                populateFromValue(initialValue);
             }
         }
     }
