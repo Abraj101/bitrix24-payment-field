@@ -175,10 +175,12 @@ function populate(rawValue) {
 }
 
 BX24.init(function() {
-    const info = BX24.placement.info();
-    if (info && info.options && info.options.value) {
-        populate(info.options.value);
+    // FIXED INTERCEPTOR: Listens for the initialization values sent from the parent container
+    var placementInfo = BX24.placement.info();
+    if (placementInfo && placementInfo.options && placementInfo.options.value) {
+        populate(placementInfo.options.value);
     }
+    
     BX24.placement.bindEvent('save', function(event) {
         BX24.placement.call('setValue', JSON.stringify(collectData()), function() {
             event.fulfill();
