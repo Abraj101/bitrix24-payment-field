@@ -39,7 +39,7 @@
     <div class="section-header">
         <span class="section-title">Payment Details</span>
     </div>
-    <div class="save-indicator" id="saveIndicator">Syncing field array...</div>
+    <div class="save-indicator" id="saveIndicator">Connecting...</div>
 
     <div class="field-row">
         <div class="field-group">
@@ -120,7 +120,7 @@
 </div>
 
 <script>
-// ⚠️ CRITICAL: REPLACE THIS VALUE WITH YOUR TRUE STRIPPED STRING FIELD NAME
+// Verified hidden string field database key
 const STORAGE_FIELD_KEY = "UF_CRM_1781407734871"; 
 
 let balloonCounter = 0;
@@ -183,18 +183,18 @@ function collectData() {
     };
 }
 
-// REAL-TIME DIRECT STORAGE WRITER
+// Background Save directly using CRM REST API
 function handleDataChange() {
     clearTimeout(saveTimeout);
     document.getElementById('saveIndicator').innerText = "Typing...";
     
     saveTimeout = setTimeout(function() {
         if (!currentDealId) {
-            document.getElementById('saveIndicator').innerText = "Context missing.";
+            document.getElementById('saveIndicator').innerText = "Error: Saving offline.";
             return;
         }
         
-        document.getElementById('saveIndicator').innerText = "Autosaving changes...";
+        document.getElementById('saveIndicator').innerText = "Autosaving...";
         const jsonString = JSON.stringify(collectData());
         
         const fieldsPayload = {};
@@ -211,7 +211,7 @@ function handleDataChange() {
                 document.getElementById('saveIndicator').innerText = "Saved to CRM ✓";
             }
         });
-    }, 700);
+    }, 600);
 }
 
 function populateFields(rawValue) {
@@ -249,35 +249,40 @@ function notifyResize() {
     if (window.BX24) BX24.fitWindow();
 }
 
-function getDealIdFromUrl() {
+// Extract Deal ID from the frame URL query parameters
+function extractDealId() {
     const urlParams = new URLSearchParams(window.location.search);
+    
+    // Look inside stringified PLACEMENT_OPTIONS array
     if (urlParams.has('PLACEMENT_OPTIONS')) {
         try {
             const opts = JSON.parse(urlParams.get('PLACEMENT_OPTIONS'));
-            return opts.ENTITY_ID || opts.entityId;
+            return opts.ENTITY_ID || opts.entityId || opts.ID || opts.id;
         } catch(e) {}
     }
-    return urlParams.get('id') || urlParams.get('ENTITY_ID');
+    
+    // Fallback to direct URL parameters
+    return urlParams.get('id') || urlParams.get('ENTITY_ID') || urlParams.get('entity_id');
 }
 
 BX24.init(function() {
-    currentDealId = getDealIdFromUrl();
+    currentDealId = extractDealId();
     
     if (currentDealId) {
-        // Read directly from the String field string content stored in the active deal card
+        // Pull data directly from the hidden CRM string field on load
         BX24.callMethod('crm.deal.get', { id: currentDealId }, function(result) {
             if (result.error()) {
-                document.getElementById('saveIndicator').innerText = "Data load fault.";
+                document.getElementById('saveIndicator').innerText = "Data link error.";
             } else {
                 const dealData = result.data();
                 if (dealData && dealData[STORAGE_FIELD_KEY]) {
                     populateFields(dealData[STORAGE_FIELD_KEY]);
                 }
-                document.getElementById('saveIndicator').innerText = "Application ready ✓";
+                document.getElementById('saveIndicator').innerText = "Ready ✓";
             }
         });
     } else {
-        document.getElementById('saveIndicator').innerText = "Loaded outside Deal layout context.";
+        document.getElementById('saveIndicator').innerText = "Outside Deal view context.";
     }
     notifyResize();
 });
